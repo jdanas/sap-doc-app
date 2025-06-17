@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Calendar, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, List, Bot } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -33,12 +33,20 @@ export function Header({
           {/* Navigation Links */}
           <div className="flex items-center space-x-2">
             {isSchedulePage ? (
-              <Link to="/appointments">
-                <Button variant="outline" size="sm">
-                  <List className="h-4 w-4 mr-2" />
-                  View Appointments
-                </Button>
-              </Link>
+              <>
+                <Link to="/appointments">
+                  <Button variant="outline" size="sm">
+                    <List className="h-4 w-4 mr-2" />
+                    Appointments
+                  </Button>
+                </Link>
+                <Link to="/adk">
+                  <Button variant="outline" size="sm">
+                    <Bot className="h-4 w-4 mr-2" />
+                    ADK Assistant
+                  </Button>
+                </Link>
+              </>
             ) : (
               <Link to="/">
                 <Button variant="outline" size="sm">
