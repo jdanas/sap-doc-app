@@ -24,11 +24,20 @@ pnpm-debug.log*
 
 # Environment variables
 .env
-.env.*
-
+.env.local
 # Tailwind CSS
 *.css.map
 
 # GitHub Copilot
 .github/copilot-instructions.md
 .sample
+
+# Python cache files for adk-service
+adk-service/__pycache__/
+adk-service/**/__pycache__/
+adk-service/*.py[cod]
+adk-service/*$py.class
+adk-service/.pytest_cache/
+adk-service/.coverage
+adk-service/htmlcov/
+adk-service/.python-version
