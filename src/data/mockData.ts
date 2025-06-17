@@ -7,7 +7,7 @@ const TIME_SLOTS = [
 ];
 
 const generateTimeSlots = (date: string): TimeSlot[] => {
-  return TIME_SLOTS.map((time, index) => ({
+  return TIME_SLOTS.map((time) => ({
     id: `${date}-${time}`,
     time,
     date,
