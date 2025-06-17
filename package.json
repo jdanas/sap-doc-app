@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:dev": "docker-compose up --build",
+    "docker:down": "docker-compose down",
+    "docker:clean": "docker-compose down -v --remove-orphans",
+    "docker:logs": "docker-compose logs -f",
+    "docker:backend": "docker-compose up backend postgres",
+    "docker:frontend": "docker-compose up frontend"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
