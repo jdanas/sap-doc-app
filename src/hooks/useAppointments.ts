@@ -50,52 +50,27 @@ export function useAppointments(currentDate: Date): UseAppointmentsReturn {
           description,
         });
 
-        // Update the local state optimistically
-        setState((prev) => ({
-          ...prev,
-          schedule: prev.schedule.map((day) => ({
-            ...day,
-            slots: day.slots.map((slot) =>
-              slot.id === slotId
-                ? { ...slot, isBooked: true, patientName, description }
-                : slot
-            ),
-          })),
-        }));
+        // Refresh the entire schedule to ensure data consistency
+        await refreshSchedule();
       } catch (error) {
         console.error("Failed to book appointment:", error);
         throw error;
       }
     },
-    []
+    [refreshSchedule]
   );
 
   const cancelAppointment = useCallback(async (slotId: string) => {
     try {
       await AppointmentService.cancelBooking(slotId);
 
-      // Update the local state optimistically
-      setState((prev) => ({
-        ...prev,
-        schedule: prev.schedule.map((day) => ({
-          ...day,
-          slots: day.slots.map((slot) =>
-            slot.id === slotId
-              ? {
-                  ...slot,
-                  isBooked: false,
-                  patientName: undefined,
-                  description: undefined,
-                }
-              : slot
-          ),
-        })),
-      }));
+      // Refresh the entire schedule to ensure data consistency
+      await refreshSchedule();
     } catch (error) {
       console.error("Failed to cancel appointment:", error);
       throw error;
     }
-  }, []);
+  }, [refreshSchedule]);
 
   // Fetch schedule when currentDate changes
   useEffect(() => {

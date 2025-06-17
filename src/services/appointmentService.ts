@@ -68,10 +68,13 @@ export class AppointmentService {
     slotId: string,
     bookingData: { patientName: string; description?: string }
   ): Promise<TimeSlot> {
-    return this.request<TimeSlot>(`/appointments/slots/${slotId}/book`, {
+    console.log('Booking appointment:', { slotId, bookingData });
+    const result = await this.request<TimeSlot>(`/appointments/slots/${slotId}/book`, {
       method: "POST",
       body: JSON.stringify(bookingData),
     });
+    console.log('Booking result:', result);
+    return result;
   }
 
   /**
@@ -96,7 +99,10 @@ export class AppointmentService {
     const startDateStr = monday.toISOString().split("T")[0];
     const endDateStr = sunday.toISOString().split("T")[0];
 
-    return this.getTimeSlots(startDateStr, endDateStr);
+    console.log('Fetching week schedule:', { startDateStr, endDateStr });
+    const result = await this.getTimeSlots(startDateStr, endDateStr);
+    console.log('Week schedule result:', result);
+    return result;
   }
 
   /**
