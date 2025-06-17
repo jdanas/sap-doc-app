@@ -2,15 +2,14 @@ import pool from './db.js';
 
 const createTables = async () => {
   try {
-    // Create time_slots table
+    // Create appointments table (only for actual bookings)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS time_slots (
+      CREATE TABLE IF NOT EXISTS appointments (
         id SERIAL PRIMARY KEY,
         slot_id VARCHAR(255) UNIQUE NOT NULL,
         time VARCHAR(10) NOT NULL,
         date DATE NOT NULL,
-        is_booked BOOLEAN DEFAULT FALSE,
-        patient_name VARCHAR(255),
+        patient_name VARCHAR(255) NOT NULL,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -19,7 +18,7 @@ const createTables = async () => {
 
     // Create index for better performance
     await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_time_slots_date ON time_slots(date);
+      CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(date);
     `);
 
     console.log('Tables created successfully');
@@ -30,41 +29,41 @@ const createTables = async () => {
 
 const seedData = async () => {
   try {
-    // Check if data already exists
-    const result = await pool.query('SELECT COUNT(*) FROM time_slots');
+    // Check if sample appointments already exist
+    const result = await pool.query('SELECT COUNT(*) FROM appointments');
     if (parseInt(result.rows[0].count) > 0) {
-      console.log('Data already exists, skipping seed');
+      console.log('Sample appointments already exist, skipping seed');
       return;
     }
 
-    // Generate sample data for the next 7 days
-    const timeSlots = [
-      '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-      '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'
+    // Add a few sample appointments for demonstration
+    const sampleAppointments = [
+      {
+        slot_id: `${new Date().toISOString().split('T')[0]}-10:00`,
+        time: '10:00',
+        date: new Date(),
+        patient_name: 'John Doe',
+        description: 'Regular checkup'
+      },
+      {
+        slot_id: `${new Date().toISOString().split('T')[0]}-14:30`,
+        time: '14:30',
+        date: new Date(),
+        patient_name: 'Jane Smith',
+        description: 'Follow-up appointment'
+      }
     ];
 
-    const today = new Date();
-    for (let day = 0; day < 7; day++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + day);
-      const dateString = date.toISOString().split('T')[0];
-
-      for (const time of timeSlots) {
-        const slotId = `${dateString}-${time}`;
-        const isBooked = Math.random() < 0.3; // 30% chance of being booked
-        const patientName = isBooked ? 'John Doe' : null;
-        const description = isBooked ? 'Regular checkup' : null;
-
-        await pool.query(
-          'INSERT INTO time_slots (slot_id, time, date, is_booked, patient_name, description) VALUES ($1, $2, $3, $4, $5, $6)',
-          [slotId, time, dateString, isBooked, patientName, description]
-        );
-      }
+    for (const appointment of sampleAppointments) {
+      await pool.query(
+        'INSERT INTO appointments (slot_id, time, date, patient_name, description) VALUES ($1, $2, $3, $4, $5)',
+        [appointment.slot_id, appointment.time, appointment.date, appointment.patient_name, appointment.description]
+      );
     }
 
-    console.log('Sample data seeded successfully');
+    console.log('Sample appointments seeded successfully');
   } catch (error) {
-    console.error('Error seeding data:', error);
+    console.error('Error seeding appointments:', error);
   }
 };
 

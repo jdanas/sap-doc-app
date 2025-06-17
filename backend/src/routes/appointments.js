@@ -4,50 +4,67 @@ import pool from '../database/db.js';
 
 const router = express.Router();
 
-// Get all time slots for a specific date range
+// Get all time slots for a specific date range (dynamic generation + bookings)
 router.get('/slots', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
-    let query = 'SELECT * FROM time_slots';
-    let params = [];
+    // Define available time slots
+    const timeSlots = [
+      '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+      '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'
+    ];
     
-    if (startDate && endDate) {
-      query += ' WHERE date BETWEEN $1 AND $2';
-      params = [startDate, endDate];
-    } else if (startDate) {
-      query += ' WHERE date >= $1';
-      params = [startDate];
-    }
+    // Get date range
+    const start = startDate ? new Date(startDate) : new Date();
+    const end = endDate ? new Date(endDate) : new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000); // 7 days
     
-    query += ' ORDER BY date, time';
+    // Get existing appointments in the date range
+    const appointmentQuery = `
+      SELECT * FROM appointments 
+      WHERE date BETWEEN $1 AND $2 
+      ORDER BY date, time
+    `;
+    const appointments = await pool.query(appointmentQuery, [start, end]);
     
-    const result = await pool.query(query, params);
+    // Create a map of existing appointments by slot_id
+    const appointmentMap = new Map();
+    appointments.rows.forEach(appointment => {
+      appointmentMap.set(appointment.slot_id, appointment);
+    });
     
-    // Group by date
-    const groupedSlots = result.rows.reduce((acc, slot) => {
-      const date = slot.date.toISOString().split('T')[0];
-      if (!acc[date]) {
-        acc[date] = {
-          date,
-          dayName: new Date(slot.date).toLocaleDateString('en-US', { weekday: 'long' }),
-          slots: []
-        };
-      }
+    // Generate schedule for each day
+    const schedule = [];
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      const dateString = currentDate.toISOString().split('T')[0];
+      const daySchedule = {
+        date: dateString,
+        dayName: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        slots: []
+      };
       
-      acc[date].slots.push({
-        id: slot.slot_id,
-        time: slot.time,
-        date,
-        isBooked: slot.is_booked,
-        patientName: slot.patient_name,
-        description: slot.description
+      // Generate slots for this day
+      timeSlots.forEach(time => {
+        const slotId = `${dateString}-${time}`;
+        const appointment = appointmentMap.get(slotId);
+        
+        daySchedule.slots.push({
+          id: slotId,
+          time,
+          date: dateString,
+          isBooked: !!appointment,
+          patientName: appointment?.patient_name || undefined,
+          description: appointment?.description || undefined
+        });
       });
       
-      return acc;
-    }, {});
+      schedule.push(daySchedule);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
     
-    res.json(Object.values(groupedSlots));
+    res.json(schedule);
   } catch (error) {
     console.error('Error fetching slots:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -58,22 +75,33 @@ router.get('/slots', async (req, res) => {
 router.get('/slots/:slotId', async (req, res) => {
   try {
     const { slotId } = req.params;
-    const result = await pool.query('SELECT * FROM time_slots WHERE slot_id = $1', [slotId]);
+    
+    // Check if there's an appointment for this slot
+    const result = await pool.query('SELECT * FROM appointments WHERE slot_id = $1', [slotId]);
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Slot not found' });
+      // No appointment exists, return empty slot
+      const [date, time] = slotId.split('-');
+      return res.json({
+        id: slotId,
+        time,
+        date,
+        isBooked: false,
+        patientName: undefined,
+        description: undefined
+      });
     }
     
-    const slot = result.rows[0];
-    const date = slot.date.toISOString().split('T')[0];
+    const appointment = result.rows[0];
+    const date = appointment.date.toISOString().split('T')[0];
     
     res.json({
-      id: slot.slot_id,
-      time: slot.time,
+      id: appointment.slot_id,
+      time: appointment.time,
       date,
-      isBooked: slot.is_booked,
-      patientName: slot.patient_name,
-      description: slot.description
+      isBooked: true,
+      patientName: appointment.patient_name,
+      description: appointment.description
     });
   } catch (error) {
     console.error('Error fetching slot:', error);
@@ -95,33 +123,33 @@ router.post('/slots/:slotId/book', [
     const { slotId } = req.params;
     const { patientName, description } = req.body;
     
-    // Check if slot exists and is not already booked
-    const existingSlot = await pool.query('SELECT * FROM time_slots WHERE slot_id = $1', [slotId]);
+    // Parse slot_id to get date and time
+    const [dateString, time] = slotId.split('-');
+    const date = new Date(dateString);
     
-    if (existingSlot.rows.length === 0) {
-      return res.status(404).json({ error: 'Slot not found' });
-    }
+    // Check if appointment already exists
+    const existingAppointment = await pool.query('SELECT * FROM appointments WHERE slot_id = $1', [slotId]);
     
-    if (existingSlot.rows[0].is_booked) {
+    if (existingAppointment.rows.length > 0) {
       return res.status(400).json({ error: 'Slot is already booked' });
     }
     
-    // Book the slot
+    // Create new appointment
     const result = await pool.query(
-      'UPDATE time_slots SET is_booked = TRUE, patient_name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE slot_id = $3 RETURNING *',
-      [patientName, description, slotId]
+      'INSERT INTO appointments (slot_id, time, date, patient_name, description) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [slotId, time, date, patientName, description]
     );
     
-    const slot = result.rows[0];
-    const date = slot.date.toISOString().split('T')[0];
+    const appointment = result.rows[0];
+    const responseDateString = appointment.date.toISOString().split('T')[0];
     
     res.json({
-      id: slot.slot_id,
-      time: slot.time,
-      date,
-      isBooked: slot.is_booked,
-      patientName: slot.patient_name,
-      description: slot.description,
+      id: appointment.slot_id,
+      time: appointment.time,
+      date: responseDateString,
+      isBooked: true,
+      patientName: appointment.patient_name,
+      description: appointment.description,
       message: 'Slot booked successfully'
     });
   } catch (error) {
@@ -135,37 +163,30 @@ router.delete('/slots/:slotId/book', async (req, res) => {
   try {
     const { slotId } = req.params;
     
-    // Check if slot exists and is booked
-    const existingSlot = await pool.query('SELECT * FROM time_slots WHERE slot_id = $1', [slotId]);
+    // Check if appointment exists
+    const existingAppointment = await pool.query('SELECT * FROM appointments WHERE slot_id = $1', [slotId]);
     
-    if (existingSlot.rows.length === 0) {
-      return res.status(404).json({ error: 'Slot not found' });
+    if (existingAppointment.rows.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
     }
     
-    if (!existingSlot.rows[0].is_booked) {
-      return res.status(400).json({ error: 'Slot is not booked' });
-    }
+    // Delete the appointment
+    await pool.query('DELETE FROM appointments WHERE slot_id = $1', [slotId]);
     
-    // Cancel the booking
-    const result = await pool.query(
-      'UPDATE time_slots SET is_booked = FALSE, patient_name = NULL, description = NULL, updated_at = CURRENT_TIMESTAMP WHERE slot_id = $1 RETURNING *',
-      [slotId]
-    );
-    
-    const slot = result.rows[0];
-    const date = slot.date.toISOString().split('T')[0];
+    // Parse slot_id to return slot info
+    const [dateString, time] = slotId.split('-');
     
     res.json({
-      id: slot.slot_id,
-      time: slot.time,
-      date,
-      isBooked: slot.is_booked,
-      patientName: slot.patient_name,
-      description: slot.description,
-      message: 'Booking cancelled successfully'
+      id: slotId,
+      time,
+      date: dateString,
+      isBooked: false,
+      patientName: undefined,
+      description: undefined,
+      message: 'Appointment cancelled successfully'
     });
   } catch (error) {
-    console.error('Error cancelling booking:', error);
+    console.error('Error cancelling appointment:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -174,16 +195,16 @@ router.delete('/slots/:slotId/book', async (req, res) => {
 router.get('/booked', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM time_slots WHERE is_booked = TRUE ORDER BY date, time'
+      'SELECT * FROM appointments ORDER BY date, time'
     );
     
-    const bookedSlots = result.rows.map(slot => ({
-      id: slot.slot_id,
-      time: slot.time,
-      date: slot.date.toISOString().split('T')[0],
-      isBooked: slot.is_booked,
-      patientName: slot.patient_name,
-      description: slot.description
+    const bookedSlots = result.rows.map(appointment => ({
+      id: appointment.slot_id,
+      time: appointment.time,
+      date: appointment.date.toISOString().split('T')[0],
+      isBooked: true,
+      patientName: appointment.patient_name,
+      description: appointment.description
     }));
     
     res.json(bookedSlots);
