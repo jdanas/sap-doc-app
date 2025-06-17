@@ -170,4 +170,27 @@ router.delete('/slots/:slotId/book', async (req, res) => {
   }
 });
 
+// Get only booked appointments
+router.get('/booked', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM time_slots WHERE is_booked = TRUE ORDER BY date, time'
+    );
+    
+    const bookedSlots = result.rows.map(slot => ({
+      id: slot.slot_id,
+      time: slot.time,
+      date: slot.date.toISOString().split('T')[0],
+      isBooked: slot.is_booked,
+      patientName: slot.patient_name,
+      description: slot.description
+    }));
+    
+    res.json(bookedSlots);
+  } catch (error) {
+    console.error('Error fetching booked appointments:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
