@@ -5,21 +5,26 @@ A simple Express.js backend for the SAP Doc appointment scheduling application.
 ## Setup
 
 1. **Install dependencies:**
+
    ```bash
    cd backend
    npm install
    ```
 
 2. **Set up PostgreSQL database:**
+
    - Install PostgreSQL if you haven't already
    - Create a new database named `sap_doc_app`
    - Copy `.env.example` to `.env` and update with your database credentials
 
 3. **Environment Configuration:**
+
    ```bash
    cp .env.example .env
    ```
+
    Edit `.env` with your PostgreSQL credentials:
+
    ```
    DB_HOST=localhost
    DB_PORT=5432
@@ -30,6 +35,7 @@ A simple Express.js backend for the SAP Doc appointment scheduling application.
    ```
 
 4. **Run database migrations:**
+
    ```bash
    npm run migrate
    ```
@@ -42,15 +48,18 @@ A simple Express.js backend for the SAP Doc appointment scheduling application.
 ## API Endpoints
 
 ### Get Time Slots
+
 - **GET** `/api/appointments/slots`
 - **Query Parameters:**
   - `startDate` (optional): Start date in YYYY-MM-DD format
   - `endDate` (optional): End date in YYYY-MM-DD format
 
 ### Get Specific Time Slot
+
 - **GET** `/api/appointments/slots/:slotId`
 
 ### Book Time Slot
+
 - **POST** `/api/appointments/slots/:slotId/book`
 - **Body:**
   ```json
@@ -61,11 +70,13 @@ A simple Express.js backend for the SAP Doc appointment scheduling application.
   ```
 
 ### Cancel Booking
+
 - **DELETE** `/api/appointments/slots/:slotId/book`
 
 ## Database Schema
 
 ### time_slots table
+
 - `id` (SERIAL PRIMARY KEY)
 - `slot_id` (VARCHAR UNIQUE) - Format: "YYYY-MM-DD-HH:MM"
 - `time` (VARCHAR) - Time in HH:MM format
