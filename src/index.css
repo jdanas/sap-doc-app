@@ -39,21 +39,23 @@ h1 {
 
 button {
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid #000; /* Black border */
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #000; /* Black */
+  color: #000; /* White text */
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  background-color: #222; /* Slightly lighter black */
+  border-color: #222; /* Match hover background */
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid #444; /* Dark gray outline */
 }
 
 @media (prefers-color-scheme: light) {
