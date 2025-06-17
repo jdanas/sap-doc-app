@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "sap-doc-scheduling"
+version = "0.1.0"
+description = "SAP Doc scheduling assistant using Agent Development Kit"
+authors = ["SAP Doc Team"]
+license = "Apache License 2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic-settings = "^2.8.1"
+tabulate = "^0.9.0"
+cloudpickle = "^3.1.1"
+pylint = "^3.3.6"
+google-cloud-aiplatform = { extras = [
+    "adk",
+    "agent_engine",
+], version = "^1.93.0" }
+google-adk = "^1.0.0"
+jsonschema = "^4.23.0"
+psycopg2-binary = "^2.9.0"
+fastapi = "^0.104.0"
+uvicorn = "^0.24.0"
+python-multipart = "^0.0.6"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+pytest-mock = "^3.14.0"
+pytest-cov = "^6.0.0"
+pytest-asyncio = "^0.25.3"
+flake8-pyproject = "^1.2.3"
+pylint = "^3.3.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

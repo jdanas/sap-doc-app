@@ -48,6 +48,36 @@ services:
       - sap-doc-network
     command: sh -c "npm run migrate && npm run dev"
 
+  # Google ADK Scheduling Assistant
+  adk-service:
+    build:
+      context: ./adk-service
+      dockerfile: Dockerfile
+    container_name: sap-doc-adk
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: sap_doc_app
+      DB_USER: kade
+      DB_PASSWORD: password123
+      HOST: 0.0.0.0
+      PORT: 8000
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./adk-service:/app
+    networks:
+      - sap-doc-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Frontend
   frontend:
     build:

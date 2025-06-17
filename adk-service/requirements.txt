@@ -1,0 +1,11 @@
+google-adk
+google-cloud-aiplatform[adk,agent_engine]
+psycopg2-binary
+fastapi
+uvicorn
+python-multipart
+python-dotenv
+pydantic
+pydantic-settings
+tabulate
+cloudpickle
