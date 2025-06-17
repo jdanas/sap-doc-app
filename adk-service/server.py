@@ -17,7 +17,7 @@ import asyncio
 from datetime import datetime
 
 # Import our tools directly for the bridge
-from agent_simple import (
+from agent import (
     get_available_slots,
     find_nearest_available_slot,
     book_appointment_slot,
@@ -66,7 +66,7 @@ async def health_check():
     """Detailed health check."""
     try:
         # Test database connection
-        from agent_simple import get_db_connection
+        from agent import get_db_connection
         conn = get_db_connection()
         conn.close()
         
@@ -339,7 +339,7 @@ if __name__ == "__main__":
     logger.info("Running in simulated ADK mode - ready for production ADK deployment")
     
     uvicorn.run(
-        "server_v2:app",
+        "server:app",
         host=host,
         port=port,
         reload=True if os.getenv("ENVIRONMENT") == "development" else False
