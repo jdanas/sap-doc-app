@@ -31,3 +31,4 @@ pnpm-debug.log*
 
 # GitHub Copilot
 .github/copilot-instructions.md
+.sample
