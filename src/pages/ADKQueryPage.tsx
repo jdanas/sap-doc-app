@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { SimpleHeader } from "@/components/ui/simple-header";
-import { AppointmentService } from "@/services/appointmentService";
 import { useToast } from "@/hooks/use-toast";
 
 export function ADKQueryPage() {
@@ -28,9 +27,24 @@ export function ADKQueryPage() {
     setResponse("");
 
     try {
-      // Process the query with our simple agent
-      const agentResponse = await processBookingQuery(query);
-      setResponse(agentResponse);
+      // Process the query with our Google ADK Python service
+      const response = await fetch("http://localhost:8000/query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: query,
+          conversation_history: [],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process query");
+      }
+
+      const data = await response.json();
+      setResponse(data.response);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to process query";
@@ -43,133 +57,6 @@ export function ADKQueryPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const processBookingQuery = async (userQuery: string): Promise<string> => {
-    const normalizedQuery = userQuery.toLowerCase();
-
-    // Check if query is about finding available slots
-    if (
-      normalizedQuery.includes("nearest") ||
-      normalizedQuery.includes("available") ||
-      normalizedQuery.includes("book") ||
-      normalizedQuery.includes("appointment") ||
-      normalizedQuery.includes("next") ||
-      normalizedQuery.includes("earliest")
-    ) {
-      try {
-        // Get current week schedule
-        const today = new Date();
-        const schedule = await AppointmentService.getWeekSchedule(today);
-
-        // Find the nearest available slot
-        const nearestSlot = findNearestAvailableSlot(schedule);
-
-        if (nearestSlot) {
-          return `🎯 **Nearest Available Appointment:**
-
-📅 **Date:** ${formatDisplayDate(nearestSlot.date)}
-⏰ **Time:** ${nearestSlot.time}
-📍 **Slot ID:** ${nearestSlot.id}
-
-✅ This slot is currently available for booking. Would you like me to help you book this appointment?
-
-💡 **How to book:** Go to the main schedule page and click on this time slot to book your appointment.`;
-        } else {
-          return `❌ **No Available Slots Found**
-
-Unfortunately, there are no available appointment slots in the current week. 
-
-🔍 **Suggestions:**
-- Check the schedule page for next week's availability
-- Contact the office directly for urgent appointments
-- Try looking at different time preferences
-
-📞 **Alternative:** You can call the office to discuss additional scheduling options.`;
-        }
-      } catch {
-        throw new Error("Failed to check available appointments");
-      }
-    }
-
-    // Handle other types of queries
-    if (
-      normalizedQuery.includes("cancel") ||
-      normalizedQuery.includes("reschedule")
-    ) {
-      return `📋 **Appointment Management:**
-
-To cancel or reschedule an appointment:
-
-1. 📱 **View Appointments:** Click "View Appointments" in the header
-2. 🗑️ **Cancel:** Use the cancel button next to your appointment
-3. 📅 **Reschedule:** Cancel your current appointment and book a new one
-
-💡 **Tip:** Make sure to cancel at least 24 hours in advance when possible.`;
-    }
-
-    if (normalizedQuery.includes("help") || normalizedQuery.includes("how")) {
-      return `🤖 **SAP Doc Appointment Assistant**
-
-I can help you with:
-
-🔍 **Find Available Slots:**
-- "What's the nearest available appointment?"
-- "When is the next available slot?"
-- "Show me available times"
-
-📅 **Booking Information:**
-- "How do I book an appointment?"
-- "What times are available?"
-
-🗂️ **Appointment Management:**
-- "How do I cancel my appointment?"
-- "How do I reschedule?"
-
-💬 **Just ask me anything about appointments and I'll help you!**`;
-    }
-
-    // Default response for unrecognized queries
-    return `🤖 **I'm here to help with appointments!**
-
-I didn't quite understand your request. Here's what I can help you with:
-
-🔍 **Find appointments:** Try asking "What's the nearest available appointment?"
-📅 **Booking help:** Ask "How do I book an appointment?"
-🗂️ **Management:** Ask "How do I cancel my appointment?"
-
-💡 **Tip:** Be specific about what you're looking for, and I'll do my best to help!`;
-  };
-
-  const findNearestAvailableSlot = (
-    schedule: {
-      date: string;
-      slots: { id: string; date: string; time: string; isBooked: boolean }[];
-    }[]
-  ) => {
-    const now = new Date();
-
-    for (const day of schedule) {
-      for (const slot of day.slots) {
-        if (!slot.isBooked) {
-          const slotDateTime = new Date(`${slot.date} ${slot.time}`);
-          if (slotDateTime > now) {
-            return slot;
-          }
-        }
-      }
-    }
-    return null;
-  };
-
-  const formatDisplayDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -313,42 +200,6 @@ I didn't quite understand your request. Here's what I can help you with:
             </CardContent>
           </Card>
         </div>
-
-        {/* ADK Integration Info */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>🚀 ADK Integration Ready</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-medium text-blue-900 mb-2">
-                Google ADK Integration Points:
-              </h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>
-                  • <strong>Query Processing:</strong> Ready for ADK natural
-                  language understanding
-                </li>
-                <li>
-                  • <strong>Appointment Data:</strong> Connected to real
-                  appointment database
-                </li>
-                <li>
-                  • <strong>Response Generation:</strong> Structured responses
-                  with booking information
-                </li>
-                <li>
-                  • <strong>Action Handling:</strong> Can trigger booking
-                  actions and provide guidance
-                </li>
-              </ul>
-              <p className="text-xs text-blue-600 mt-3">
-                This page serves as the foundation for integrating Google ADK's
-                advanced AI capabilities.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
