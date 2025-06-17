@@ -81,7 +81,10 @@ router.get('/slots/:slotId', async (req, res) => {
     
     if (result.rows.length === 0) {
       // No appointment exists, return empty slot
-      const [date, time] = slotId.split('-');
+      // Format: YYYY-MM-DD-HH:MM
+      const parts = slotId.split('-');
+      const date = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      const time = parts[3];
       return res.json({
         id: slotId,
         time,
@@ -124,7 +127,12 @@ router.post('/slots/:slotId/book', [
     const { patientName, description } = req.body;
     
     // Parse slot_id to get date and time
-    const [dateString, time] = slotId.split('-');
+    // Format: YYYY-MM-DD-HH:MM
+    const parts = slotId.split('-');
+    // Reconstruct the date from the first 3 parts
+    const dateString = `${parts[0]}-${parts[1]}-${parts[2]}`;
+    // Get the time from the last part
+    const time = parts[3];
     const date = new Date(dateString);
     
     // Check if appointment already exists
@@ -174,7 +182,10 @@ router.delete('/slots/:slotId/book', async (req, res) => {
     await pool.query('DELETE FROM appointments WHERE slot_id = $1', [slotId]);
     
     // Parse slot_id to return slot info
-    const [dateString, time] = slotId.split('-');
+    // Format: YYYY-MM-DD-HH:MM
+    const parts = slotId.split('-');
+    const dateString = `${parts[0]}-${parts[1]}-${parts[2]}`;
+    const time = parts[3];
     
     res.json({
       id: slotId,
