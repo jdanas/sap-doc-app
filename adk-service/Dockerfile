@@ -20,9 +20,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Make init script executable
-RUN chmod +x init_db.py
-
 # Expose port
 EXPOSE 8000
 
@@ -36,4 +33,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the application
-CMD ["sh", "-c", "python init_db.py && python server.py"]
+CMD ["python", "server.py"]
