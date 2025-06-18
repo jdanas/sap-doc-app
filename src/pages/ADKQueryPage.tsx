@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Bot, Calendar, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,67 @@ export function ADKQueryPage() {
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<{
+    userId: string;
+    sessionId: string;
+    appName: string;
+  } | null>(null);
   const { toast } = useToast();
+
+  // Create session when component mounts
+  useEffect(() => {
+    const createSession = async () => {
+      try {
+        setResponse("Initializing ADK session...");
+
+        const sessionResponse = await fetch(
+          "http://localhost:8001/create-session",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+        if (!sessionResponse.ok) {
+          throw new Error(
+            `Failed to create ADK session: ${sessionResponse.status} ${sessionResponse.statusText}`
+          );
+        }
+
+        const sessionData = await sessionResponse.json();
+
+        if (!sessionData.success) {
+          throw new Error(sessionData.error || "Failed to create ADK session");
+        }
+
+        // Store session info
+        setSessionInfo({
+          userId: sessionData.userId,
+          sessionId: sessionData.sessionId,
+          appName: sessionData.appName,
+        });
+
+        setSessionReady(true);
+        setResponse(
+          "ADK session ready! You can now ask questions about appointments."
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to initialize session";
+        setResponse(`Error initializing session: ${errorMessage}`);
+        toast({
+          title: "Session Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    };
+
+    createSession();
+  }, [toast]);
 
   const handleQuery = async () => {
     if (!query.trim()) {
@@ -23,48 +83,22 @@ export function ADKQueryPage() {
       return;
     }
 
+    if (!sessionReady || !sessionInfo) {
+      toast({
+        title: "Error",
+        description:
+          "Session not ready. Please wait for initialization to complete.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-    setResponse("");
+    setResponse("Processing your query...");
 
     try {
-      // Get session info from localStorage if it exists
-      let userId = localStorage.getItem("adkUserId");
-      let sessionId = localStorage.getItem("adkSessionId");
-      let appName = localStorage.getItem("adkAppName") || "sap-doc-app";
-
-      // If no session exists, create a new one
-      if (!userId || !sessionId) {
-        setResponse("Creating a new ADK session...");
-
-        const sessionResponse = await fetch(
-          "http://localhost:8001/create-session",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-
-        if (!sessionResponse.ok) {
-          throw new Error("Failed to create ADK session");
-        }
-
-        const sessionData = await sessionResponse.json();
-
-        if (!sessionData.success) {
-          throw new Error(sessionData.error || "Failed to create ADK session");
-        }
-
-        // Save the session info
-        userId = sessionData.userId;
-        sessionId = sessionData.sessionId;
-        appName = sessionData.appName;
-
-        localStorage.setItem("adkUserId", userId as string);
-        localStorage.setItem("adkSessionId", sessionId as string);
-        localStorage.setItem("adkAppName", appName as string);
-
-        setResponse("Session created! Processing your query...");
-      }
+      // Use the existing session info
+      const { userId, sessionId, appName } = sessionInfo;
 
       // Process the query with our Google ADK Python service through the CORS proxy
       const response = await fetch("http://localhost:8001/run", {
@@ -176,9 +210,21 @@ export function ADKQueryPage() {
             </Link>
             <div className="flex items-center space-x-2">
               <Bot className="h-8 w-8 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900">
-                ADK Assistant
-              </h1>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  ADK Assistant
+                </h1>
+                <div className="flex items-center space-x-2 mt-1">
+                  <div
+                    className={`h-2 w-2 rounded-full ${
+                      sessionReady ? "bg-green-500" : "bg-yellow-500"
+                    }`}
+                  />
+                  <span className="text-sm text-gray-600">
+                    {sessionReady ? "Session Ready" : "Initializing..."}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -216,13 +262,18 @@ export function ADKQueryPage() {
 
               <Button
                 onClick={handleQuery}
-                disabled={loading || !query.trim()}
+                disabled={loading || !query.trim() || !sessionReady}
                 className="w-full"
               >
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Processing...
+                  </>
+                ) : !sessionReady ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Initializing Session...
                   </>
                 ) : (
                   <>
