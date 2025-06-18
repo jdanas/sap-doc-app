@@ -7,7 +7,7 @@ Your SAP Doc ADK service now uses **real Google ADK** with no simulation fallbac
 ### ✅ **What's Working:**
 
 1. **Real Google ADK Agent** - Direct integration with Google's Agent Development Kit
-2. **Native ADK CLI** - Uses `adk api_server` command for production-grade serving  
+2. **Native ADK CLI** - Uses `adk api_server` command for production-grade serving
 3. **Real AI Responses** - Powered by Gemini 2.0 Flash model
 4. **Full Tool Integration** - Real database operations with intelligent responses
 5. **Docker Ready** - Containerized and ready for deployment
@@ -15,16 +15,16 @@ Your SAP Doc ADK service now uses **real Google ADK** with no simulation fallbac
 ### 🛠️ **Architecture:**
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │────│  Real ADK CLI   │────│   PostgreSQL    │
-│   (React)       │    │  (Gemini AI)    │    │   Database      │
-│   :5173         │    │  :8000          │    │   :5432         │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                    ┌─────────────────┐
-                    │  ADK Tools      │
-                    │  (Real DB Ops)  │
-                    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │────│  CORS Proxy     │────│  Real ADK CLI   │────│   PostgreSQL    │
+│   (React)       │    │  (FastAPI)      │    │  (Gemini AI)    │    │   Database      │
+│   :5173         │    │  :8001          │    │  :8000          │    │   :5432         │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                      │
+                                            ┌─────────────────┐
+                                            │  ADK Tools      │
+                                            │  (Real DB Ops)  │
+                                            └─────────────────┘
 ```
 
 ### 🧪 **How to Test:**
@@ -46,9 +46,31 @@ docker-compose up --build adk-service
 #### **3. Test the Real AI Assistant:**
 
 ```bash
-curl -X POST http://localhost:8000/query \
+# Test via CORS proxy (frontend uses this)
+curl -X POST http://localhost:8001/run \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hi! What appointments are available this week?"}'
+  -d '{
+    "appName": "sap-doc-app",
+    "userId": "test-user",
+    "sessionId": "test-session",
+    "newMessage": {
+      "role": "user",
+      "parts": [{ "text": "Hi! What appointments are available this week?" }]
+    }
+  }'
+
+# Or test direct ADK API endpoint (no CORS headers)
+curl -X POST http://localhost:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "appName": "sap-doc-app",
+    "userId": "test-user",
+    "sessionId": "test-session",
+    "newMessage": {
+      "role": "user",
+      "parts": [{ "text": "Hi! What appointments are available this week?" }]
+    }
+  }'
 ```
 
 #### **4. Try These Real AI Queries:**
@@ -62,15 +84,18 @@ curl -X POST http://localhost:8000/query \
 
 - ❌ **Removed simulation mode** - No more pattern matching
 - ✅ **Real Gemini AI** - Natural language understanding
-- ✅ **Smart tool calling** - Intelligent database operations  
+- ✅ **Smart tool calling** - Intelligent database operations
 - ✅ **Context awareness** - Remembers conversation history
 - ✅ **Production ready** - Official Google ADK infrastructure
 
 #### **4. Check ADK Service Health:**
 
 ```bash
-curl http://localhost:8000/health
-curl http://localhost:8000/config
+# Check CORS proxy health
+curl http://localhost:8001/
+
+# Check ADK API health (view endpoints)
+curl http://localhost:8000/docs
 ```
 
 ## 🎯 **Current Implementation Details:**

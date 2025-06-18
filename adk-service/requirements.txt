@@ -9,3 +9,4 @@ pydantic
 pydantic-settings
 tabulate
 cloudpickle
+httpx

@@ -27,15 +27,20 @@ export function ADKQueryPage() {
     setResponse("");
 
     try {
-      // Process the query with our Google ADK Python service
-      const response = await fetch("http://localhost:8000/query", {
+      // Process the query with our Google ADK Python service through the CORS proxy
+      const response = await fetch("http://localhost:8001/run", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: query,
-          conversation_history: [],
+          appName: "sap-doc-app",
+          userId: "user-" + new Date().getTime(),
+          sessionId: "session-" + new Date().getTime(),
+          newMessage: {
+            role: "user",
+            parts: [{ text: query }]
+          }
         }),
       });
 
@@ -44,7 +49,30 @@ export function ADKQueryPage() {
       }
 
       const data = await response.json();
-      setResponse(data.response);
+      
+      // Extract response from ADK API response format
+      // The ADK API returns events with content that has parts with text
+      let responseText = "";
+      if (Array.isArray(data)) {
+        // Find events with content, role=model and text parts
+        for (const event of data) {
+          if (event.content && event.content.role === "model") {
+            for (const part of event.content.parts || []) {
+              if (part.text) {
+                responseText += part.text;
+              }
+            }
+          }
+        }
+      } else if (data.response) {
+        // Handle old format for backward compatibility
+        responseText = data.response;
+      } else {
+        responseText = "Received response in unexpected format. Check console for details.";
+        console.error("Unexpected response format:", data);
+      }
+      
+      setResponse(responseText);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to process query";

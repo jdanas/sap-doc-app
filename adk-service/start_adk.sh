@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0
 
 """
-SAP Doc ADK Service - Real Google ADK Implementation
+SAP Doc ADK Service - Real Google ADK Implementation with CORS Proxy
 """
 
 echo "🚀 Starting SAP Doc ADK Service with Google ADK CLI..."
@@ -21,24 +21,42 @@ if [ -z "$GOOGLE_API_KEY" ]; then
     exit 1
 fi
 
-# Set ADK environment variables
-export HOST=${HOST:-"0.0.0.0"}
-export PORT=${PORT:-8000}
+# Set environment variables
+export ADK_HOST=${ADK_HOST:-"localhost"}
+export ADK_PORT=${ADK_PORT:-8000}
+export PROXY_PORT=${PROXY_PORT:-8001}
 
 echo "📋 Configuration:"
-echo "  🌐 Host: $HOST"
-echo "  🔌 Port: $PORT"
-echo "  🗄️  Database: ${DB_HOST:-localhost}:${DB_PORT:-5432}"
+echo "  🌐 ADK Host: $ADK_HOST"
+echo "  🔌 ADK Port: $ADK_PORT"
+echo "  � CORS Proxy Port: $PROXY_PORT"
+echo "  �🗄️  Database: ${DB_HOST:-localhost}:${DB_PORT:-5432}"
 echo "  🤖 Model: gemini-2.0-flash-001"
 echo ""
 
-echo "🎯 Starting Google ADK API Server..."
-echo "🌍 Available at: http://$HOST:$PORT"
+echo "🎯 Starting Google ADK API Server in the background..."
+adk api_server \
+    --host="$ADK_HOST" \
+    --port="$ADK_PORT" \
+    --log_level="${LOG_LEVEL:-INFO}" \
+    . &
+
+# Save the process ID so we can terminate it properly
+ADK_PID=$!
+
+# Setup exit handler to kill ADK server when script ends
+trap "kill $ADK_PID; exit" TERM INT
+
+# Wait a moment for ADK to start
+sleep 3
+
+echo "🔄 Starting CORS Proxy for frontend access..."
+echo "🌍 Proxy available at: http://0.0.0.0:$PROXY_PORT"
 echo ""
 
-# Use the real Google ADK CLI command
-exec adk api_server \
-    --host="$HOST" \
-    --port="$PORT" \
-    --log_level="${LOG_LEVEL:-INFO}" \
-    .
+# Start the CORS proxy
+python proxy.py
+
+# This will only run if python proxy.py exits
+kill $ADK_PID
+exit
