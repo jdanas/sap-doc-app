@@ -116,14 +116,26 @@ def find_nearest_available_slot(start_date: Optional[str] = None) -> Optional[Di
     return available_slots[0] if available_slots else None
 
 def book_appointment_slot(slot_id: str, patient_name: str, description: str = "") -> str:
-    """Book an appointment slot."""
+    """Book an appointment slot - Enhanced with proper parsing."""
     try:
-        parts = slot_id.split('-')
-        if len(parts) < 5:
-            return "Invalid slot ID format."
+        logger.info(f"🔍 book_appointment_slot called with: slot_id='{slot_id}', patient_name='{patient_name}', description='{description}'")
         
-        date_str = f"{parts[0]}-{parts[1]}-{parts[2]}"
-        time_str = f"{parts[3]}:{parts[4]}"
+        parts = slot_id.split('-')
+        logger.info(f"Split parts: {parts}, length: {len(parts)}")
+        
+        if len(parts) == 4:
+            # Format: YYYY-MM-DD-HH:MM
+            date_str = f"{parts[0]}-{parts[1]}-{parts[2]}"
+            time_str = parts[3]  # Already in HH:MM format
+        elif len(parts) == 5:
+            # Legacy format: YYYY-MM-DD-HH-MM
+            date_str = f"{parts[0]}-{parts[1]}-{parts[2]}"
+            time_str = f"{parts[3]}:{parts[4]}"
+        else:
+            logger.error(f"Invalid slot_id format: {slot_id}")
+            return "Invalid slot ID format. Please try again."
+        
+        logger.info(f"📅 Parsed: date_str='{date_str}', time_str='{time_str}'")
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -136,6 +148,7 @@ def book_appointment_slot(slot_id: str, patient_name: str, description: str = ""
         if existing:
             cursor.close()
             conn.close()
+            logger.info(f"❌ Slot {slot_id} already booked")
             return f"Sorry, the appointment slot for {date_str} at {format_time_12h(time_str)} is already booked."
         
         # Book the appointment
@@ -145,15 +158,19 @@ def book_appointment_slot(slot_id: str, patient_name: str, description: str = ""
         """
         cursor.execute(insert_query, (slot_id, time_str, date_str, patient_name, description))
         conn.commit()
+        logger.info(f"✅ Successfully inserted appointment into database")
         
         cursor.close()
         conn.close()
         
-        return f"Appointment successfully booked for {patient_name} on {date_str} at {format_time_12h(time_str)}."
+        formatted_date = datetime.strptime(date_str, '%Y-%m-%d').strftime('%B %d, %Y')
+        day_name = datetime.strptime(date_str, '%Y-%m-%d').strftime('%A')
+        
+        return f"✅ Appointment successfully booked!\n\nDetails:\n- Patient: {patient_name}\n- Date: {formatted_date} ({day_name})\n- Time: {format_time_12h(time_str)}\n- Appointment ID: {slot_id}\n\nPlease arrive 15 minutes early. You will receive a confirmation email shortly."
         
     except Exception as error:
-        logger.error(f"Error booking appointment: {error}")
-        return "Unable to book appointment. Please try again or contact our office."
+        logger.error(f"💥 Error booking appointment: {error}")
+        return f"❌ Unable to book appointment due to a system error: {str(error)}. Please try again or contact our office directly."
 
 def cancel_appointment_by_slot(slot_id: str) -> str:
     """Cancel an appointment by slot ID."""
