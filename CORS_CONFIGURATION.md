@@ -20,13 +20,15 @@ Frontend (port 5173) → CORS Proxy (port 8001) → ADK API Server (port 8000)
 
 ## How It Works
 
-When the frontend makes a request to `http://localhost:8001/query`:
+When the frontend makes a request to `http://localhost:8001/run`:
 
 1. The request is received by the CORS proxy
 2. The CORS proxy adds the appropriate CORS headers to allow the frontend origin
-3. The proxy forwards the request to the ADK API server at `http://localhost:8000/query`
+3. The proxy forwards the request to the ADK API server at `http://localhost:8000/run`
 4. The ADK API server processes the request and returns a response
 5. The proxy forwards the response back to the frontend with the CORS headers
+
+> **Note:** The real Google ADK API server uses `/run` endpoint instead of the old `/query` endpoint that was used in the simulation server.
 
 ## Configuration
 

@@ -75,8 +75,23 @@ async def proxy(request: Request, path: str):
             media_type="application/json"
         )
 
+async def check_adk_server():
+    """Check if the ADK API server is running."""
+    try:
+        # Try connecting to the ADK server
+        response = await client.get("/")
+        print(f"✅ ADK API server is running at {ADK_URL}")
+        print(f"   Response: {response.status_code}")
+        return True
+    except Exception as e:
+        print(f"❌ ADK API server not available at {ADK_URL}: {e}")
+        print("   Is the ADK server starting up? We'll continue anyway and retry connections.")
+        return False
+
 if __name__ == "__main__":
     proxy_port = int(os.environ.get("PROXY_PORT", "8001"))
     print(f"🚀 Starting ADK CORS Proxy at http://0.0.0.0:{proxy_port}")
     print(f"⏩ Forwarding to ADK API at {ADK_URL}")
+    
+    # Start the proxy server
     uvicorn.run(app, host="0.0.0.0", port=proxy_port)

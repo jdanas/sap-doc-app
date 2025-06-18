@@ -18,7 +18,7 @@ Your SAP Doc ADK service now uses **real Google ADK** with no simulation fallbac
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │────│  CORS Proxy     │────│  Real ADK CLI   │────│   PostgreSQL    │
 │   (React)       │    │  (FastAPI)      │    │  (Gemini AI)    │    │   Database      │
-│   :5173         │    │  :8001          │    │  :8000          │    │   :5432         │
+│   :5173         │    │  :8001/run      │    │  :8000/run      │    │   :5432         │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
                                                       │
                                             ┌─────────────────┐

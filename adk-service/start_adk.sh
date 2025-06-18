@@ -47,8 +47,9 @@ ADK_PID=$!
 # Setup exit handler to kill ADK server when script ends
 trap "kill $ADK_PID; exit" TERM INT
 
-# Wait a moment for ADK to start
-sleep 3
+# Wait for ADK to start
+echo "⏳ Waiting for ADK API server to start (10 seconds)..."
+sleep 10
 
 echo "🔄 Starting CORS Proxy for frontend access..."
 echo "🌍 Proxy available at: http://0.0.0.0:$PROXY_PORT"

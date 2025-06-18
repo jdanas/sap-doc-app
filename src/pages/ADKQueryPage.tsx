@@ -27,6 +27,14 @@ export function ADKQueryPage() {
     setResponse("");
 
     try {
+      // First, let's see if we need to create a new session or use existing one
+      const userId = localStorage.getItem('adkUserId') || `user-${new Date().getTime()}`;
+      const sessionId = localStorage.getItem('adkSessionId') || `session-${new Date().getTime()}`;
+      
+      // Save these IDs for future requests
+      localStorage.setItem('adkUserId', userId);
+      localStorage.setItem('adkSessionId', sessionId);
+      
       // Process the query with our Google ADK Python service through the CORS proxy
       const response = await fetch("http://localhost:8001/run", {
         method: "POST",
@@ -35,8 +43,8 @@ export function ADKQueryPage() {
         },
         body: JSON.stringify({
           appName: "sap-doc-app",
-          userId: "user-" + new Date().getTime(),
-          sessionId: "session-" + new Date().getTime(),
+          userId: userId,
+          sessionId: sessionId,
           newMessage: {
             role: "user",
             parts: [{ text: query }]
@@ -45,14 +53,17 @@ export function ADKQueryPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to process query");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to process query");
       }
 
       const data = await response.json();
       
       // Extract response from ADK API response format
-      // The ADK API returns events with content that has parts with text
+      // The ADK API can return different formats depending on the response type
       let responseText = "";
+      
+      // Check if we have the stream format (array of events)
       if (Array.isArray(data)) {
         // Find events with content, role=model and text parts
         for (const event of data) {
@@ -67,6 +78,19 @@ export function ADKQueryPage() {
       } else if (data.response) {
         // Handle old format for backward compatibility
         responseText = data.response;
+      } else if (data.selectedResponse && data.selectedResponse.candidates && data.selectedResponse.candidates.length > 0) {
+        // Handle format from /run endpoint which contains candidateResponses
+        const candidate = data.selectedResponse.candidates[0];
+        if (candidate.content && candidate.content.parts) {
+          for (const part of candidate.content.parts) {
+            if (part.text) {
+              responseText += part.text;
+            }
+          }
+        }
+      } else if (data.text) {
+        // Simple text response
+        responseText = data.text;
       } else {
         responseText = "Received response in unexpected format. Check console for details.";
         console.error("Unexpected response format:", data);
