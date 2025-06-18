@@ -12,7 +12,7 @@ class AgentModel(BaseModel):
     """Agent model settings."""
     
     name: str = Field(default="sap_doc_scheduling_assistant")
-    model: str = Field(default="gemini-2.0-flash-001")
+    model: str = Field(default="gemini-2.5-flash")
 
 class Config(BaseSettings):
     """Configuration settings for the SAP Doc scheduling assistant."""
