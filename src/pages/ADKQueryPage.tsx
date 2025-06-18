@@ -27,14 +27,45 @@ export function ADKQueryPage() {
     setResponse("");
 
     try {
-      // First, let's see if we need to create a new session or use existing one
-      const userId = localStorage.getItem('adkUserId') || `user-${new Date().getTime()}`;
-      const sessionId = localStorage.getItem('adkSessionId') || `session-${new Date().getTime()}`;
-      
-      // Save these IDs for future requests
-      localStorage.setItem('adkUserId', userId);
-      localStorage.setItem('adkSessionId', sessionId);
-      
+      // Get session info from localStorage if it exists
+      let userId = localStorage.getItem("adkUserId");
+      let sessionId = localStorage.getItem("adkSessionId");
+      let appName = localStorage.getItem("adkAppName") || "sap-doc-app";
+
+      // If no session exists, create a new one
+      if (!userId || !sessionId) {
+        setResponse("Creating a new ADK session...");
+
+        const sessionResponse = await fetch(
+          "http://localhost:8001/create-session",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+        if (!sessionResponse.ok) {
+          throw new Error("Failed to create ADK session");
+        }
+
+        const sessionData = await sessionResponse.json();
+
+        if (!sessionData.success) {
+          throw new Error(sessionData.error || "Failed to create ADK session");
+        }
+
+        // Save the session info
+        userId = sessionData.userId;
+        sessionId = sessionData.sessionId;
+        appName = sessionData.appName;
+
+        localStorage.setItem("adkUserId", userId as string);
+        localStorage.setItem("adkSessionId", sessionId as string);
+        localStorage.setItem("adkAppName", appName as string);
+
+        setResponse("Session created! Processing your query...");
+      }
+
       // Process the query with our Google ADK Python service through the CORS proxy
       const response = await fetch("http://localhost:8001/run", {
         method: "POST",
@@ -42,13 +73,13 @@ export function ADKQueryPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          appName: "sap-doc-app",
+          appName: appName,
           userId: userId,
           sessionId: sessionId,
           newMessage: {
             role: "user",
-            parts: [{ text: query }]
-          }
+            parts: [{ text: query }],
+          },
         }),
       });
 
@@ -58,11 +89,11 @@ export function ADKQueryPage() {
       }
 
       const data = await response.json();
-      
+
       // Extract response from ADK API response format
       // The ADK API can return different formats depending on the response type
       let responseText = "";
-      
+
       // Check if we have the stream format (array of events)
       if (Array.isArray(data)) {
         // Find events with content, role=model and text parts
@@ -78,7 +109,11 @@ export function ADKQueryPage() {
       } else if (data.response) {
         // Handle old format for backward compatibility
         responseText = data.response;
-      } else if (data.selectedResponse && data.selectedResponse.candidates && data.selectedResponse.candidates.length > 0) {
+      } else if (
+        data.selectedResponse &&
+        data.selectedResponse.candidates &&
+        data.selectedResponse.candidates.length > 0
+      ) {
         // Handle format from /run endpoint which contains candidateResponses
         const candidate = data.selectedResponse.candidates[0];
         if (candidate.content && candidate.content.parts) {
@@ -92,10 +127,11 @@ export function ADKQueryPage() {
         // Simple text response
         responseText = data.text;
       } else {
-        responseText = "Received response in unexpected format. Check console for details.";
+        responseText =
+          "Received response in unexpected format. Check console for details.";
         console.error("Unexpected response format:", data);
       }
-      
+
       setResponse(responseText);
     } catch (error) {
       const errorMessage =
