@@ -30,6 +30,32 @@ When the frontend makes a request to `http://localhost:8001/run`:
 
 > **Note:** The real Google ADK API server uses `/run` endpoint instead of the old `/query` endpoint that was used in the simulation server.
 
+## Session Management
+
+The real Google ADK API requires proper session management. Our solution handles this through:
+
+1. **Session Creation**: The frontend first calls `/create-session` endpoint on the proxy
+   ```
+   POST http://localhost:8001/create-session
+   ```
+
+2. **Session Storage**: The proxy creates a session with the ADK API and returns details to the frontend
+   ```json
+   {
+     "success": true,
+     "userId": "user-uuid",
+     "sessionId": "session-uuid",
+     "appName": "sap-doc-app"
+   }
+   ```
+
+3. **Session Usage**: The frontend stores these details in localStorage and uses them for all future requests
+   ```
+   POST http://localhost:8001/apps/sap-doc-app/users/{userId}/sessions/{sessionId}/events
+   ```
+
+4. **Event Processing**: The proxy converts event requests to the format expected by the ADK API's `/run` endpoint
+
 ## Configuration
 
 The CORS proxy is configured to allow requests from:
@@ -57,9 +83,23 @@ The healthcheck now uses the CORS proxy endpoint to check if the service is heal
 If you encounter CORS issues:
 
 1. Check that both the ADK API server and CORS proxy are running
-2. Verify that the frontend is making requests to the correct proxy endpoint (`http://localhost:8001/query`)
+2. Verify that the frontend is making requests to the correct proxy endpoint (`http://localhost:8001/run`)
 3. Check the Docker logs for any errors:
    ```
    docker-compose logs adk-service
    ```
 4. If needed, add additional origins to the CORS configuration in `proxy.py`
+
+### Session Errors
+
+If you see "Session not found" errors:
+
+1. Clear your browser's localStorage to remove old session IDs
+2. Check that the `/create-session` endpoint is working:
+   ```bash
+   curl -X POST http://localhost:8001/create-session
+   ```
+3. Verify that the ADK API server is properly handling sessions by checking logs:
+   ```bash
+   docker-compose logs adk-service
+   ```

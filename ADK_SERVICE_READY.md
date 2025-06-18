@@ -213,13 +213,41 @@ docker logs sap-doc-adk
 docker exec -it sap-doc-adk python -c "from agent import get_db_connection; print('DB OK')"
 ```
 
+### **Session Management:**
+
+The real ADK API requires proper session management. The frontend now:
+
+1. Creates a session through the `create-session` proxy endpoint
+2. Stores session details in localStorage
+3. Uses these for all subsequent requests
+
+If you get "Session not found" errors, try:
+
+```bash
+# Create a new session
+curl -X POST http://localhost:8001/create-session
+
+# Use the returned userId and sessionId in your requests
+```
+
 ### **If queries don't work:**
 
 ```bash
-# Test direct endpoint
-curl -X POST http://localhost:8000/query \
+# First create a test session
+SESSION=$(curl -s -X POST http://localhost:8001/create-session)
+USER_ID=$(echo $SESSION | grep -o '"userId":"[^"]*' | cut -d'"' -f4)
+SESSION_ID=$(echo $SESSION | grep -o '"sessionId":"[^"]*' | cut -d'"' -f4)
+
+# Then test with the proper session IDs
+curl -X POST "http://localhost:8001/apps/sap-doc-app/users/$USER_ID/sessions/$SESSION_ID/events" \
   -H "Content-Type: application/json" \
-  -d '{"message": "What is the nearest available appointment?"}'
+  -d '{
+    "author": "user",
+    "content": {
+      "role": "user",
+      "parts": [{"text": "What is the nearest available appointment?"}]
+    }
+  }'
 ```
 
 Your Google ADK scheduling assistant is ready to use! 🚀

@@ -49,15 +49,26 @@ docker-compose exec adk-service curl -s http://localhost:8001/
 ### 5. Try a manual test request
 
 ```bash
-docker-compose exec adk-service curl -s -X POST http://localhost:8001/run \
+# First create a session
+docker-compose exec adk-service curl -s -X POST http://localhost:8001/create-session
+
+# This will return something like:
+# {
+#   "success": true,
+#   "userId": "user-abc123", 
+#   "sessionId": "session-xyz456",
+#   "appName": "sap-doc-app"
+# }
+
+# Now use those values to make a query
+docker-compose exec adk-service curl -s -X POST \
+  "http://localhost:8001/apps/sap-doc-app/users/user-abc123/sessions/session-xyz456/events" \
   -H "Content-Type: application/json" \
   -d '{
-    "appName": "sap-doc-app",
-    "userId": "test-user",
-    "sessionId": "test-session",
-    "newMessage": {
+    "author": "user",
+    "content": {
       "role": "user",
-      "parts": [{ "text": "What appointments are available?" }]
+      "parts": [{"text": "What appointments are available?"}]
     }
   }'
 ```
@@ -93,20 +104,87 @@ docker-compose up -d
 docker-compose logs -f adk-service
 ```
 
-## ADK API Endpoint Format
+## "Session not found" Error
 
-The real Google ADK API server uses the `/run` endpoint with this format:
+If you're seeing a "Session not found" error when trying to use the ADK service:
 
-```json
-{
-  "appName": "sap-doc-app",
-  "userId": "user-id",
-  "sessionId": "session-id",
-  "newMessage": {
-    "role": "user",
-    "parts": [{ "text": "Your question here" }]
-  }
-}
+### 1. Clear Browser LocalStorage
+
+This will force the frontend to create a new session:
+
+1. Open browser DevTools (F12 or right-click and select "Inspect")
+2. Go to the "Application" tab
+3. Select "Local Storage" from the left sidebar
+4. Right-click and select "Clear"
+5. Refresh the page
+
+### 2. Verify Session Creation
+
+Check if the session creation endpoint is working:
+
+```bash
+docker-compose exec adk-service curl -s -X POST http://localhost:8001/create-session
 ```
 
-The response format may vary based on the endpoint and configuration.
+This should return success with userId, sessionId, and appName.
+
+### 3. Check Session Existence
+
+You can check if a session exists in the ADK API server:
+
+```bash
+# Replace with your actual user ID and session ID
+USER_ID="user-abc123"
+SESSION_ID="session-xyz456"
+
+docker-compose exec adk-service curl -s \
+  "http://localhost:8000/apps/sap-doc-app/users/$USER_ID/sessions/$SESSION_ID"
+```
+
+### 4. Recreate the Session Manually
+
+Try creating a session directly with the ADK API server:
+
+```bash
+docker-compose exec adk-service curl -s -X POST \
+  "http://localhost:8000/apps/sap-doc-app/users/user-test/sessions/session-test" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+### 5. Check ADK API Server Logs
+
+Look for any errors related to session management:
+
+```bash
+docker-compose logs adk-service | grep -i "session"
+```
+
+## Improving Your ADK Experience
+
+### Conversion Between API Formats
+
+The ADK REST API uses a different format than our original simulation. Our proxy handles this conversion:
+
+1. Original simulation used:
+   ```json
+   {
+     "message": "What appointments are available?",
+     "conversation_history": []
+   }
+   ```
+
+2. Real ADK API uses:
+   ```json
+   {
+     "appName": "sap-doc-app",
+     "userId": "user-id",
+     "sessionId": "session-id",
+     "newMessage": {
+       "role": "user",
+       "parts": [{ "text": "Your question here" }]
+     }
+   }
+   ```
+
+The proxy handles this conversion automatically.
