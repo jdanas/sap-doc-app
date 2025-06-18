@@ -63,6 +63,8 @@ services:
       HOST: 0.0.0.0
       PORT: 8000
       ENVIRONMENT: development
+      # Required: Add your Google API key for ADK
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -73,7 +75,7 @@ services:
     networks:
       - sap-doc-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

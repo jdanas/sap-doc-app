@@ -28,9 +28,13 @@ ENV PYTHONPATH=/app
 ENV HOST=0.0.0.0
 ENV PORT=8000
 
-# Health check
+# Health check for ADK API server
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/ || exit 1
 
-# Run the application
-CMD ["python", "server.py"]
+# Copy startup script
+COPY start_adk.sh ./
+RUN chmod +x start_adk.sh
+
+# Always use real Google ADK api_server
+CMD ["./start_adk.sh"]

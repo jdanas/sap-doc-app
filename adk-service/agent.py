@@ -266,18 +266,17 @@ def send_appointment_reminder(patient_name: str, date: str, time: str) -> str:
     """Send appointment reminder (mock function)."""
     return f"Reminder sent to {patient_name} for appointment on {date} at {format_time_12h(time)}"
 
-# Simple ADK Agent creation (if google.adk is available)
+# Real ADK Agent - No simulation mode
 try:
-    from google.adk import Agent
+    from google.adk.agents import Agent
+    
+    # Import instruction from prompts.py
+    from prompts import INSTRUCTION
     
     root_agent = Agent(
         model="gemini-2.0-flash-001",
         name="sap_doc_scheduling_assistant",
-        instruction="""
-You are an intelligent scheduling assistant for SAP Doc medical appointments. Your goal is to help patients find, book, and manage their doctor appointments efficiently.
-
-Always be helpful, professional, and focused on providing excellent patient service.
-""",
+        instruction=INSTRUCTION,
         tools=[
             get_available_slots,
             find_nearest_available_slot,
@@ -290,11 +289,13 @@ Always be helpful, professional, and focused on providing excellent patient serv
         ],
     )
     
-    logger.info("ADK Agent created successfully with Google API key")
+    logger.info("✅ Real ADK Agent created successfully")
     
 except ImportError as e:
-    logger.warning(f"Google ADK not available: {e}. Using bridge mode.")
-    root_agent = None
+    logger.error(f"❌ Google ADK not available: {e}")
+    logger.error("Install with: pip install google-adk google-cloud-aiplatform[adk]")
+    raise SystemExit("ADK is required - simulation mode removed")
 except Exception as e:
-    logger.warning(f"ADK Agent creation failed: {e}. Using bridge mode.")
-    root_agent = None
+    logger.error(f"❌ ADK Agent creation failed: {e}")
+    logger.error("Check your GOOGLE_API_KEY environment variable")
+    raise SystemExit("Failed to create ADK agent")
