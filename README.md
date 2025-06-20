@@ -188,4 +188,4 @@ The application uses PostgreSQL. If you encounter database issues:
 
 ## 👥 Contributors
 
-- Your Name - Initial work and maintenance
+- jdanas - Research Engineer II @ NTU
